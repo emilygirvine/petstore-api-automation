@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { Pet, ApiResponse } from './types';
 import dotenv from 'dotenv';
 
@@ -8,7 +8,6 @@ const BASE_URL = process.env.API_BASE_URL;
 
 class PetStoreAPI {
   static async addPet(pet: Pet): Promise<Pet> {
-    // Validate required fields
     if (!pet.name || !pet.photoUrls || pet.photoUrls.length === 0) {
       throw new Error("Missing required fields: 'name' and 'photoUrls'");
     }
@@ -20,29 +19,49 @@ class PetStoreAPI {
   }
 
   static async getPetById(petId: number): Promise<Pet> {
-    const response = await axios.get(`${BASE_URL}/pet/${petId}`);
-    return response.data;
+    try {
+      const response = await axios.get(`${BASE_URL}/pet/${petId}`);
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError; 
+      if (axiosError.response && axiosError.response.status === 404) {
+        throw new Error('Pet not found');
+      }
+      throw error;
+    }
   }
 
   static async updatePet(pet: Pet): Promise<Pet> {
     try {
-        const response = await axios.get(`${BASE_URL}/pet/${pet.id}`);
-        if (!response.data) {
-            throw new Error('Pet not found');
-        }
-    } catch (error) {
+      const getResponse = await this.getPetById(pet.id);
+      if (!getResponse) {
         throw new Error('Pet not found');
-    }
+      }
 
-    const response = await axios.put(`${BASE_URL}/pet`, pet, {
+      const response = await axios.put(`${BASE_URL}/pet`, pet, {
         headers: { 'Content-Type': 'application/json' },
-    });
-    return response.data;
-}
+      });
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      if (axiosError.response && axiosError.response.status === 404) {
+        throw new Error('Pet not found');
+      }
+      throw error;
+    }
+  }
 
   static async deletePet(petId: number): Promise<ApiResponse> {
-    const response = await axios.delete(`${BASE_URL}/pet/${petId}`);
-    return response.data;
+    try {
+      const response = await axios.delete(`${BASE_URL}/pet/${petId}`);
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError; // Type the error
+      if (axiosError.response && axiosError.response.status === 404) {
+        throw new Error('Pet not found');
+      }
+      throw error;
+    }
   }
 }
 
